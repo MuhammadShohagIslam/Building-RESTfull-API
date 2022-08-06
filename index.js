@@ -32,15 +32,62 @@ const servre = http.createServer((req, res) => {
     });
     req.on("end", function () {
         buffer += decoder.end();
-        res.end("Ok!");
-        console.log(headers);
+
+        // cheack the router for the matching path a handler, if can not get matching router, provide not found handler
+        const choosenHandler =
+            typeof router[trimedPath] !== "undefined"
+                ? handlers[trimedPath]
+                : handlers.notFound;
+
+        // constract the data to the send request handler
+        const data = {
+            trimedPath,
+            method,
+            queryStringObject,
+            headers,
+            payload: buffer,
+        };
+        // route the request to the handler specified in the router
+        choosenHandler(data, function (statusCode, payload) {
+            // use the status code returned from the handler or set the default status code to 200
+            statusCode = typeof statusCode === "number" ? statusCode : 200;
+
+            // use the payload retured from the handler or set the default payload empty object
+            payload = typeof payload === "object" ? payload : {};
+
+            // converted to the object to string
+            const stringPayload = JSON.stringify(payload);
+
+            // return response
+            res.setHeader("Content-Type", "application/json");
+            res.writeHead(statusCode);
+            res.end(stringPayload);
+            console.log("Return the response: ", statusCode, stringPayload);
+        });
     });
 });
+
 // Start the server, and it listen on port 5000
 servre.listen(5000, () => {
     console.log("Server is the listen on port 5000, now!");
 });
+// define the all handlers
+const handlers = {};
 
+// Sample handler
+handlers.sample = function (data, callback) {
+    callback(402, { name: "Master Node JS" });
+};
+
+// not found handler
+handlers.notFound = function (data, callback) {
+    callback(404);
+};
+
+// define the request router
+const router = {
+    sample: handlers.sample,
+};
 /*
     *** Theory ***
     /* 
